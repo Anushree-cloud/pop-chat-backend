@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String       @id @default(uuid())
+  email         String       @unique
+  name          String?
+  passwordHash  String?
+  role          UserRole     @default(USER)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  providers     AuthProvider[]
+  sessions      Session[]
+  userRooms     UserRoom[]
+  messages      Message[]
+  aiLogs        AIChatLog[]
+
+  @@index([email])
+}
+
+model AuthProvider {
+  id        String   @id @default(uuid())
+  provider  String
+  providerId String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([provider, providerId])
+}
+
+model ChatRoom {
+  id        String     @id @default(uuid())
+  name      String?
+  isGroup   Boolean    @default(false)
+  createdBy String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  userRooms UserRoom[]
+  messages  Message[]
+}
+
+model UserRoom {
+  id       String   @id @default(uuid())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  room     ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId   String
+  joinedAt DateTime @default(now())
+
+  @@unique([userId, roomId])
+  @@index([roomId])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId  String
+  room      ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId    String
+  content   String
+  meta      Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([roomId])
+  @@index([senderId])
+}
+
+model AIChatLog {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  prompt    String
+  response  String
+  model     String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  refreshTokenHash String
+  userAgent  String?
+  revoked    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([userId])
+  @@index([revoked])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
